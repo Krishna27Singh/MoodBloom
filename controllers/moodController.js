@@ -1,7 +1,7 @@
 const moodModel = require("../models/moodModel");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const apiKey = GEMINI_API_KEY;
+const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
     console.error("API key is missing. Ensure GEMINI_API_KEY is set in your .env file.");
     process.exit(1);
