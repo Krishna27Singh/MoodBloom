@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./Breathing.css"; // Import CSS for styling
 
 const breathingTechniques = [
@@ -12,39 +12,36 @@ export default function Breathing() {
   const [selectedTechnique, setSelectedTechnique] = useState(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [counter, setCounter] = useState(0);
-  const [timer, setTimer] = useState(null);
   const [isPaused, setIsPaused] = useState(false);
+  const timerRef = useRef(null);
 
   useEffect(() => {
     if (selectedTechnique && !isPaused) {
-      clearInterval(timer); // Clear previous timer before setting a new one
+      clearInterval(timerRef.current);
 
       let currentCycle = selectedTechnique.cycle;
-      let index = stepIndex; // Keep track of current step
-      let duration = currentCycle[index]; // Get duration for the current step
-      setCounter(duration); // Set the countdown for the step
+      let index = stepIndex;
+      let duration = currentCycle[index];
+      setCounter(duration);
 
-      const newTimer = setInterval(() => {
+      timerRef.current = setInterval(() => {
         setCounter((prev) => {
-          if (prev > 1) return prev - 1; // Decrease timer
-          
-          // Move to next step when timer reaches 1 (not 0)
+          if (prev > 1) return prev - 1;
+
           index = (index + 1) % currentCycle.length;
           setStepIndex(index);
-          return currentCycle[index]; // Reset counter to new phase duration
+          return currentCycle[index];
         });
       }, 1000);
-
-      setTimer(newTimer);
     }
 
-    return () => clearInterval(timer);
-  }, [selectedTechnique, isPaused]);
+    return () => clearInterval(timerRef.current);
+  }, [selectedTechnique, isPaused, stepIndex]);
 
   const handlePauseResume = () => setIsPaused(!isPaused);
 
   const handleStop = () => {
-    clearInterval(timer);
+    clearInterval(timerRef.current);
     setSelectedTechnique(null);
     setStepIndex(0);
     setCounter(0);
@@ -64,10 +61,10 @@ export default function Breathing() {
               selectedTechnique?.name === technique.name ? "active" : ""
             }`}
             onClick={() => {
-              clearInterval(timer); // Reset if new technique is selected
+              clearInterval(timerRef.current);
               setSelectedTechnique(technique);
               setStepIndex(0);
-              setCounter(technique.cycle[0]); // Set initial counter correctly
+              setCounter(technique.cycle[0]);
               setIsPaused(false);
             }}
           >
