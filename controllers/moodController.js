@@ -1,5 +1,6 @@
 const moodModel = require("../models/moodModel");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const nodemailer = require("nodemailer");
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
@@ -8,8 +9,15 @@ if (!apiKey) {
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash"
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+// Configure nodemailer
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL,  // Your email
+        pass: process.env.PASSWORD, // Use App Password
+    },
 });
 
 module.exports = {
@@ -18,12 +26,12 @@ module.exports = {
             currentSuggestion: "Start tracking your mood to receive helpful suggestions!",
             weeklySuggestion: "",
             data: JSON.stringify([]),
-            mood_data: JSON.stringify(moodModel.getMoodData())
+            mood_data: JSON.stringify(moodModel.getMoodData()),
         });
     },
 
     async processMoodData(req, res) {
-        const { happy, calm, sad, angry, stressed } = req.body;
+        const { happy, calm, sad, angry, stressed, email } = req.body;  // Get user email from form
 
         let currentSuggestion = "Start tracking your mood to receive helpful suggestions!";
         let weeklySuggestion = "";
@@ -61,8 +69,26 @@ module.exports = {
                 weeklySuggestion = "Weekly Trend Analysis:\n" + weeklyResult.response.text();
             }
 
+            // Send email with mood insights
+            if (email) {
+                const mailOptions = {
+                    from: process.env.EMAIL,
+                    to: email,
+                    subject: "Your Mood Insights from MoodBloom",
+                    html: `
+                        <h2>Your Mood Insights</h2>
+                        <p><strong>Current Suggestion:</strong> ${currentSuggestion}</p>
+                        <p><strong>Weekly Suggestion:</strong> ${weeklySuggestion}</p>
+                        <p>Keep tracking your mood for better insights!</p>
+                    `,
+                };
+
+                await transporter.sendMail(mailOptions);
+                console.log("Mood insights email sent successfully to", email);
+            }
+
         } catch (error) {
-            console.error('API Error:', error.message);
+            console.error("API or Email Error:", error.message);
             currentSuggestion = "Quick tip: Try our breathing exercise feature!";
         }
 
@@ -79,10 +105,10 @@ module.exports = {
         moodModel.addMoodEntry({ mood: moodScore });
 
         res.render("tracking_index", {
-            currentSuggestion: currentSuggestion,
-            weeklySuggestion: weeklySuggestion,
+            currentSuggestion,
+            weeklySuggestion,
             data: JSON.stringify(data),
-            mood_data: JSON.stringify(moodModel.getMoodData())
+            mood_data: JSON.stringify(moodModel.getMoodData()),
         });
-    }
+    },
 };
